@@ -32,8 +32,6 @@ require_once "phing/Task.php";
  * @author    Gianluca Faieta <gianluca@faieta.net>
  * @version   $Revision$
  * @package   phing.tasks.ext
- * @see       http://svn.fedecarg.com/repo/Phing/tasks/ext/FileSyncTask.php
- * @example   http://fedecarg.com/wiki/FileSyncTask
  */
 class FileRsyncTask extends Task
 {
