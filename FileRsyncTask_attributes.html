@@ -1,0 +1,101 @@
+<html>
+    <head>
+        <title>FileRsyncTask attributes</title>
+    </head>
+    <body>
+		<h3>Attributes</h3>
+		<table>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Description</th>
+					<th>Default</th>
+					<th>Required</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>sourcedir</td>
+					<td>String</td>
+					<td>The source directory.</td>
+					<td>n/a</td>
+					<td>Yes</td>
+				</tr>
+				<tr>
+					<td>options</td>
+					<td>String</td>
+					<td>Rsync options.</td>
+					<td>-rpKz</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>destinationdir</td>
+					<td>String</td>
+					<td>The destination directory.</td>
+					<td>n/a</td>
+					<td>Yes</td>
+				</tr>
+				<tr>
+					<td>remoteshell</td>
+					<td>String</td>
+					<td>The remote shell command for remote connections.</td>
+					<td>ssh -i</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>verbose</td>
+					<td>Boolean</td>
+					<td>If set to <em>true</em>, gives more detailed info.</td>
+					<td>false</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>checksum</td>
+					<td>Boolean</td>
+					<td>If set to <em>true</em>, skip files based on checksum, not mod-time and size.
+                        Makes use of rsync <em>-c</em> switch.</td>
+					<td>false</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>dryrun</td>
+					<td>Boolean</td>
+					<td>If set to <em>true</em>, only perform a trial run with no chages.
+                        Makes use of rsync <em>--dry-run</em> switch. If enabled, disables <em>delete</em></td>
+					<td>false</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>itemizechanges</td>
+					<td>Boolean</td>
+					<td>If set to <em>true</em>, outputs a change summary.
+                        Makes use of rsync <em>--itemize-changes</em> switch.</td>
+					<td>false</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>delete</td>
+					<td>Boolean</td>
+					<td>If set to <em>true</em>, deletes files on destination that are not present in source directory.</em></td>
+					<td>false</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>backupdir</td>
+					<td>String</td>
+					<td>If enabled, makes copies of the changed/deleted files in the specified directory.</td>
+					<td>n/a</td>
+					<td>No</td>
+				</tr>
+				<tr>
+					<td>identityfile</td>
+					<td>String</td>
+					<td>Identity file for ssh</td>
+					<td>n/a</td>
+					<td>No</td>
+				</tr>
+			</tbody>
+		</table>
+    </body>
+</html>
