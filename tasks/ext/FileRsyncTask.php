@@ -22,27 +22,47 @@
 require_once "phing/Task.php";
 
 /**
- * The FileRsyncTask uses rsync to perform efficient file synchronization,
- * either locally or with a remote source or destination.
+ * The FileSyncTask class copies files either to or from a remote host, or locally
+ * on the current host. It allows rsync to transfer the differences between two
+ * sets of files across the network connection, using an efficient checksum-search
+ * algorithm.
  *
- * Based on FileSyncTask from Federico Cargnelutti
- * https://github.com/fedecarg/phing-filesynctask and modifications
- * from Anton Stöckl https://github.com/AntonStoeckl/Phing-Additions
+ * There are 4 different ways of using FileSyncTask:
  *
- * @author    Gianluca Faieta <gianluca@faieta.net>
+ *   1. For copying local files.
+ *   2. For copying from the local machine to a remote machine using a remote
+ *      shell program as the transport (ssh).
+ *   3. For copying from a remote machine to the local machine using a remote
+ *      shell program.
+ *   4. For listing files on a remote machine.
+ *
+ * This is extended from Federico's original code, all his docs are kept in here below.
+ *
+ * @author    Federico Cargnelutti <fede.carg@gmail.com>
+ * @author    Anton StÃ¶ckl <anton@stoeckl.de>
  * @version   $Revision$
  * @package   phing.tasks.ext
+ * @see       http://svn.fedecarg.com/repo/Phing/tasks/ext/FileSyncTask.php
+ * @example   http://fedecarg.com/wiki/FileSyncTask
  */
 class FileRsyncTask extends Task
 {
     /**
+     * Path to rsync command.
+     * @var string
+    */
+    protected $rsyncPath = '/usr/bin/rsync';
+
+    /**
      * Source directory.
+     * For remote sources this must contain user and host, e.g.: user@host:/my/source/dir
      * @var string
      */
     protected $sourceDir;
 
     /**
      * Destination directory.
+     * For remote targets this must contain user and host, e.g.: user@host:/my/target/dir
      * @var string
      */
     protected $destinationDir;
@@ -60,19 +80,29 @@ class FileRsyncTask extends Task
     protected $excludeFile;
 
     /**
+     * File list file.
+     * @var string
+     */
+    protected $filesFromFile;
+
+    /**
      * This option creates a backup so users can rollback to an existing restore
      * point. The remote directory is copied to a new directory specified by the
      * user.
-     *
      * @var string
      */
     protected $backupDir;
 
     /**
-     * Command options.
+     * Default command options.
+     * r - recursive
+     * p - preserve permissions
+     * K - treat symlinked dir on receiver as dir
+     * z - compress
+     * l - copy symlinks as symlinks
      * @var string
      */
-    protected $options;
+    protected $defaultOptions = '-rpKzl';
 
     /**
      * Connection type.
@@ -84,7 +114,6 @@ class FileRsyncTask extends Task
      * This option increases the amount of information you are given during the
      * transfer. The verbose option set to true will give you information about
      * what files are being transferred and a brief summary at the end.
-     *
      * @var boolean
      */
     protected $verbose = true;
@@ -105,21 +134,18 @@ class FileRsyncTask extends Task
 
     /**
      * This option will cause rsync to skip files based on checksum, not mod-time & size.
-     *
      * @var boolean
      */
     protected $checksum = false;
 
     /**
      * This option deletes files that don't exist on sender.
-     *
      * @var boolean
      */
     protected $delete = false;
 
     /**
      * Identity file.
-     *
      * @var string
      */
     protected $identityFile;
@@ -142,6 +168,10 @@ class FileRsyncTask extends Task
      */
     public function executeCommand()
     {
+        if ($this->rsyncPath === null) {
+            throw new BuildException('The "rsyncPath" attribute is missing or undefined.');
+        }
+
         if ($this->sourceDir === null) {
             throw new BuildException('The "sourcedir" attribute is missing or undefined.');
         } else if ($this->destinationDir === null) {
@@ -185,16 +215,17 @@ class FileRsyncTask extends Task
         }
 
         $this->log($command);
+
         if ($return != 0) {
             $this->log('Task exited with code: ' . $return, Project::MSG_ERR);
             $this->log('Task exited with message: (' . $return . ') ' . $this->getErrorMessage($return), Project::MSG_ERR);
+            throw new BuildException($return . ': ' . $this->getErrorMessage($return));
         } else {
             $this->log($lines, Project::MSG_INFO);
         }
 
         return $return;
     }
-
 
     /**
      * Returns the rsync command line options.
@@ -203,47 +234,59 @@ class FileRsyncTask extends Task
      */
     public function getCommand()
     {
-        $options = '-rpKz';
+        $options = $this->defaultOptions;
+
         if ($this->options !== null) {
             $options = $this->options;
         }
+
         if ($this->verbose === true) {
             $options .= 'v';
         }
+
         if ($this->checksum === true) {
             $options .= 'c';
         }
-        if ($this->remoteShell === null && $this->identityFile !== null) {
-            $this->remoteShell = '"ssh -i ' . $this->identityFile . '"';
-        }
-        if ($this->remoteShell !== null) {
-            $options .= ' -e "' . $this->remoteShell . '"';
-        }
-        if ($this->dryRun === true) {
-            $options .= ' --dry-run';
+
+        if ($this->identityFile !== null) {
+            $options .= ' -e "ssh -i '. $this->identityFile . '"';
         } else {
-            if ($this->delete === true) {
-                $options .= ' --delete-after --ignore-errors --force';
+            if ($this->remoteShell !== null) {
+                $options .= ' -e "' . $this->remoteShell . '"';
             }
         }
+
+        if ($this->dryRun === true) {
+            $options .= ' --dry-run';
+        }
+
+        if ($this->delete === true) {
+            $options .= ' --delete-after --ignore-errors --force';
+        }
+
         if ($this->itemizeChanges === true) {
             $options .= ' --itemize-changes';
         }
         if ($this->backupDir !== null) {
-            $options .= ' -b --backup-dir=' . $this->backupDir;
+            $options .= ' -b --backup-dir="' . $this->backupDir . '"';
         }
+
         if ($this->excludeFile !== null) {
-            $options .= ' --exclude-from=' . $this->excludeFile;
+            $options .= ' --exclude-from="' . $this->excludeFile . '"';
+        }
+
+        if ($this->filesFromFile !== null) {
+            $options .= ' --files-from="' . $this->filesFromFile . '"';
         }
 
         $this->setOptions($options);
 
-        $options .= ' ' . $this->sourceDir . ' ' . $this->destinationDir;
+        $options .= ' "' . $this->sourceDir . '" "' . $this->destinationDir . '"';
 
         escapeshellcmd($options);
         $options .= ' 2>&1';
 
-        return '/usr/bin/rsync ' . $options;
+        return $this->rsyncPath . ' ' . $options;
     }
 
     /**
@@ -282,7 +325,18 @@ class FileRsyncTask extends Task
     }
 
     /**
-     * Sets the self::$isRemoteConnection property.
+     * Sets the path to the rsync command.
+     *
+     * @param string $path
+     * @return void
+     */
+    public function setRsyncPath($path)
+    {
+        $this->rsyncPath = $path;
+    }
+
+    /**
+     * Sets the isRemoteConnection property.
      *
      * @param boolean $isRemote
      * @return void
@@ -296,6 +350,7 @@ class FileRsyncTask extends Task
      * Sets the source directory.
      *
      * @param string $dir
+     * @return void
      */
     public function setSourceDir($dir)
     {
@@ -306,6 +361,7 @@ class FileRsyncTask extends Task
      * Sets the command options.
      *
      * @param string $options
+     * @return void
      */
     public function setOptions($options)
     {
@@ -316,6 +372,7 @@ class FileRsyncTask extends Task
      * Sets the destination directory.
      *
      * @param string $dir
+     * @return void
      */
     public function setDestinationDir($dir)
     {
@@ -329,10 +386,11 @@ class FileRsyncTask extends Task
      * on a local network.
      *
      * @param string $shell
+     * @return void
      */
     public function setRemoteShell($shell)
     {
-        $this->remoteShell = $file;
+        $this->remoteShell = $shell;
     }
 
     /**
@@ -342,6 +400,7 @@ class FileRsyncTask extends Task
      * the end.
      *
      * @param boolean $verbose
+     * @return void
      */
     public function setVerbose($verbose)
     {
@@ -355,6 +414,7 @@ class FileRsyncTask extends Task
      * This option changes this to compare a 128-bit checksum for each file that has a matching size.
      *
      * @param boolean $checksum
+     * @return void
      */
     public function setChecksum($checksum)
     {
@@ -367,6 +427,7 @@ class FileRsyncTask extends Task
      * -i, --itemize-changes options to see what an rsync command is going to do before one actually runs it.
      *
      * @param boolean $dryRun
+     * @return void
      */
     public function setDryRun($dryRun)
     {
@@ -377,6 +438,7 @@ class FileRsyncTask extends Task
      * Requests a simple itemized list of the changes that are being made to each file, including attribute changes.
      *
      * @param boolean $itemizeChanges
+     * @return void
      */
     public function setItemizeChanges($itemizeChanges)
     {
@@ -389,6 +451,7 @@ class FileRsyncTask extends Task
      * from transfer are also excluded from being deleted.
      *
      * @param boolean $delete
+     * @return void
      */
     public function setDelete($delete)
     {
@@ -400,6 +463,7 @@ class FileRsyncTask extends Task
      * lines starting with ';' or '#' are ignored.
      *
      * @param string $file
+     * @return void
      */
     public function setExcludeFile($file)
     {
@@ -407,9 +471,21 @@ class FileRsyncTask extends Task
     }
 
     /**
+     * Only transfer files listed in $file
+     *
+     * @param string $file
+     * @return void
+     */
+    public function setFilesFromFile($file)
+    {
+        $this->filesFromFile = $file;
+    }
+
+    /**
      * Makes backups into hierarchy based in $dir.
      *
      * @param string dir
+     * @return void
      */
     public function setBackupDir($dir)
     {
@@ -420,10 +496,10 @@ class FileRsyncTask extends Task
      * Sets the identity file for public key transfers.
      *
      * @param string location of ssh identity file
+     * @return void
      */
     public function setIdentityFile($identity)
     {
         $this->identityFile = $identity;
     }
 }
-

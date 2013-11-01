@@ -16,6 +16,13 @@
 			</thead>
 			<tbody>
 				<tr>
+					<td>rsyncPath</td>
+					<td>String</td>
+					<td>Path to rsync command.</td>
+					<td>/usr/bin/rsync</td>
+					<td>Yes</td>
+				</tr>
+				<tr>
 					<td>sourcedir</td>
 					<td>String</td>
 					<td>The source directory.</td>
@@ -35,6 +42,20 @@
 					<td>The destination directory.</td>
 					<td>n/a</td>
 					<td>Yes</td>
+				</tr>
+                <tr>
+					<td>excludeFile</td>
+					<td>String</td>
+					<td>Excluded patterns file (--exclude-from rsync option).</td>
+					<td>n/a</td>
+					<td>No</td>
+				</tr>
+                <tr>
+					<td>filesFromFile</td>
+					<td>String</td>
+					<td>Files to be transfered patterns file (--files-from rsync option).</td>
+					<td>n/a</td>
+					<td>No</td>
 				</tr>
 				<tr>
 					<td>remoteshell</td>
